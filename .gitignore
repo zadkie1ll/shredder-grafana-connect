@@ -7,4 +7,4 @@ __pycache__/
 *.egg-info/
 data/
 prometheus/targets/*.json
-ssh/
+/ssh/
