@@ -25,8 +25,11 @@ def test_generates_prometheus_groups() -> None:
     assert groups[0].labels == {
         "node_id": "id1",
         "node_name": "ru1",
+        "node": "ru1",
+        "type": "vpn",
         "managed_by": "panel-sync",
         "country": "RU",
+        "region": "RU",
     }
 
 

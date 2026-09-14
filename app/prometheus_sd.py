@@ -20,6 +20,8 @@ def build_target_groups(nodes: list[ManagedNode]) -> list[TargetGroup]:
         labels = {
             "node_id": node.node_id,
             "node_name": node.node_name,
+            "node": node.node_name,
+            "type": "vpn",
             "managed_by": "panel-sync",
         }
         for key, value in (
@@ -29,6 +31,8 @@ def build_target_groups(nodes: list[ManagedNode]) -> list[TargetGroup]:
         ):
             if value:
                 labels[key] = value
+        if node.country:
+            labels["region"] = node.country
         groups.append(TargetGroup(targets=[target], labels=labels))
     return groups
 
