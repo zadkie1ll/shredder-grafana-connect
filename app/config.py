@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     panel_verify_tls: bool = True
     panel_request_timeout: float = Field(20, gt=0)
     panel_allow_empty_response: bool = False
-    manage_nodes_without_notes: bool = False
     default_ssh_user: str = "root"
+    default_ssh_port: int = Field(22, ge=1, le=65535)
 
     admin_api_token: str = Field(min_length=16)
     sync_interval_seconds: int = Field(3600, ge=60)
@@ -58,6 +58,11 @@ class Settings(BaseSettings):
         if not value.startswith("/"):
             raise ValueError("PANEL_NODES_PATH must start with /")
         return value
+
+    @field_validator("prometheus_source_ip", mode="before")
+    @classmethod
+    def empty_source_ip_is_none(cls, value: object) -> object:
+        return None if value == "" else value
 
     @field_validator("node_exporter_version")
     @classmethod

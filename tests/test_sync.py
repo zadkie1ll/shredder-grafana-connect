@@ -88,7 +88,7 @@ async def test_protected_node_survives_panel_removal(settings) -> None:
     assert "1.2.3.4:9100" in settings.prometheus_targets_file.read_text()
 
 
-async def test_optional_fallback_manages_node_without_notes(settings) -> None:
+async def test_node_without_notes_uses_global_ssh_settings(settings) -> None:
     repository = NodeRepository(settings.database_path)
     await repository.initialize()
     installer = FakeInstaller()
@@ -99,7 +99,6 @@ async def test_optional_fallback_manages_node_without_notes(settings) -> None:
         repository,
         installer,
         settings.prometheus_targets_file,
-        manage_nodes_without_notes=True,
     )
     result = await service.sync()
     assert result.nodes_active == 1

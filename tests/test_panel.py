@@ -1,6 +1,7 @@
 import httpx
 import pytest
 
+from app.config import Settings
 from app.errors import PanelResponseError
 from app.models import panel_node_from_payload
 from app.panel.client import PanelClient
@@ -44,3 +45,14 @@ async def test_panel_client_parses_nested_nodes(settings) -> None:
 def test_empty_response_is_rejected(settings) -> None:
     with pytest.raises(PanelResponseError):
         PanelClient(settings)._parse_response([])
+
+
+def test_empty_optional_firewall_source_is_valid(tmp_path) -> None:
+    settings = Settings(
+        panel_base_url="https://panel.example.com",
+        panel_api_token="token",
+        admin_api_token="0123456789abcdef",
+        prometheus_source_ip="",
+        database_path=tmp_path / "state.db",
+    )
+    assert settings.prometheus_source_ip is None

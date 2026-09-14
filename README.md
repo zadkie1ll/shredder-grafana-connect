@@ -8,7 +8,7 @@
 ## Возможности
 
 - запрос Panel API с тремя попытками и безопасным отказом без изменения targets;
-- строгий машиночитаемый блок `monitoring:` в notes;
+- единые SSH-настройки для всех нод панели (`root:22` по умолчанию);
 - SSH TOFU (`accept-new`) с отдельным `known_hosts` и блокировкой изменившихся ключей;
 - idempotent установка `node_exporter` с проверкой SHA-256 и `/metrics`;
 - SQLite-состояние, обнаружение новых, изменённых и удалённых нод;
@@ -18,31 +18,16 @@
 - `/health`, `/ready`, `/metrics`, `/api/v1/sync/status`, `/api/v1/nodes`;
 - JSON-логи без токенов, ключей и полного содержимого notes.
 
-## Формат notes
+## Подключение к нодам
 
-```text
-monitoring:
-ssh_host=1.2.3.4
-ssh_port=22
-ssh_user=root
-node_exporter_port=9100
-enabled=true
-```
-
-Обязателен `ssh_user`. Если `ssh_host` отсутствует, используется address/IP из
-Panel API. Допустимы только перечисленные поля. `enabled=false` исключает ноду.
-
-Если все ноды используют одинакового пользователя и в панели нет notes, fallback
-можно включить явно:
+Поле `note` не используется. Для каждой ноды адрес берётся из Panel API, а SSH
+user/port и exporter port задаются глобально:
 
 ```env
-MANAGE_NODES_WITHOUT_NOTES=true
 DEFAULT_SSH_USER=root
+DEFAULT_SSH_PORT=22
+NODE_EXPORTER_PORT=9100
 ```
-
-Тогда адрес берётся из Panel API, SSH port — `22`, exporter port — из
-`NODE_EXPORTER_PORT`. По умолчанию fallback выключен, чтобы случайно не
-подключаться к нодам без явной конфигурации.
 
 ## Конфигурация
 

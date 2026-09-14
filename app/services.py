@@ -2,12 +2,7 @@ import asyncio
 from datetime import UTC, datetime
 from time import monotonic
 
-from app.errors import (
-    NotesParseError,
-    PanelAPIError,
-    PrometheusTargetsWriteError,
-    SSHConnectionError,
-)
+from app.errors import PanelAPIError, PrometheusTargetsWriteError, SSHConnectionError
 from app.logging import log
 from app.metrics import (
     ACTIVE_NODES,
@@ -21,7 +16,6 @@ from app.metrics import (
 )
 from app.models import DesiredNode, MonitoringConfig, PanelNode, SyncResult
 from app.panel.client import PanelClient
-from app.panel.parser import parse_monitoring_notes
 from app.prometheus_sd import build_target_groups, write_targets_atomically
 from app.repository import NodeRepository
 from app.ssh.installer import NodeExporterInstaller
@@ -36,8 +30,8 @@ class NodeSyncService:
         targets_file: object,
         protected_node_ids: set[str] | None = None,
         protected_node_names: set[str] | None = None,
-        manage_nodes_without_notes: bool = False,
         default_ssh_user: str = "root",
+        default_ssh_port: int = 22,
         default_exporter_port: int = 9100,
     ):
         self.panel = panel
@@ -46,8 +40,8 @@ class NodeSyncService:
         self.targets_file = targets_file
         self.protected_node_ids = protected_node_ids or set()
         self.protected_node_names = {name.casefold() for name in (protected_node_names or set())}
-        self.manage_nodes_without_notes = manage_nodes_without_notes
         self.default_ssh_user = default_ssh_user
+        self.default_ssh_port = default_ssh_port
         self.default_exporter_port = default_exporter_port
         self._lock = asyncio.Lock()
         self.last_result: SyncResult | None = None
@@ -84,27 +78,12 @@ class NodeSyncService:
                 return result
 
             desired: dict[str, DesiredNode] = {}
-            protected_ids: set[str] = set()
-            parse_errors = 0
             for panel_node in panel_nodes:
-                try:
-                    node = self._to_desired(panel_node)
-                except NotesParseError as exc:
-                    parse_errors += 1
-                    protected_ids.add(panel_node.id)
-                    await self.repository.record_existing_error(panel_node.id, str(exc))
-                    log.error(
-                        "notes_parse_failed",
-                        node=panel_node.name,
-                        node_id=panel_node.id,
-                        error=str(exc),
-                    )
-                    continue
-                if node:
-                    desired[node.node_id] = node
+                node = self._to_desired(panel_node)
+                desired[node.node_id] = node
 
             current = {node.node_id: node for node in await self.repository.get_nodes()}
-            errors = parse_errors
+            errors = 0
             for node in desired.values():
                 previous = current.get(node.node_id)
                 needs_provision = previous is None or previous.last_success_at is None
@@ -152,7 +131,7 @@ class NodeSyncService:
                         error=str(exc),
                     )
 
-            retained_ids = set(desired) | protected_ids
+            retained_ids = set(desired)
             managed_before_removal = await self.repository.get_nodes()
             for node in managed_before_removal:
                 if self._is_protected(node.node_id, node.node_name):
@@ -198,7 +177,7 @@ class NodeSyncService:
                 status=status,
                 nodes_total=len(panel_nodes),
                 nodes_active=active,
-                nodes_error=error_count + parse_errors,
+                nodes_error=error_count,
             )
             self.last_result = result
             SYNC_DURATION.observe(monotonic() - timer)
@@ -210,16 +189,13 @@ class NodeSyncService:
             node_id in self.protected_node_ids or node_name.casefold() in self.protected_node_names
         )
 
-    def _to_desired(self, node: PanelNode) -> DesiredNode | None:
-        monitoring = parse_monitoring_notes(node.notes, node.address)
-        if monitoring is None and self.manage_nodes_without_notes:
-            monitoring = MonitoringConfig(
-                ssh_host=node.address,
-                ssh_user=self.default_ssh_user,
-                node_exporter_port=self.default_exporter_port,
-            )
-        if monitoring is None or not monitoring.enabled:
-            return None
+    def _to_desired(self, node: PanelNode) -> DesiredNode:
+        monitoring = MonitoringConfig(
+            ssh_host=node.address,
+            ssh_port=self.default_ssh_port,
+            ssh_user=self.default_ssh_user,
+            node_exporter_port=self.default_exporter_port,
+        )
         return DesiredNode(
             node_id=node.id,
             node_name=node.name,
