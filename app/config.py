@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, HttpUrl, field_validator
+from pydantic import Field, HttpUrl, IPvAnyAddress, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     node_exporter_port: int = Field(9100, ge=1, le=65535)
     node_exporter_version: str = "1.9.1"
     configure_firewall: bool = False
-    prometheus_source_ip: str | None = None
+    prometheus_source_ip: IPvAnyAddress | None = None
 
     prometheus_targets_file: Path = Path("/prometheus-targets/nodes.json")
     database_path: Path = Path("/app/data/state.db")

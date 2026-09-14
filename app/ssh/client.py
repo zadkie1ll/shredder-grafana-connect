@@ -63,7 +63,7 @@ class SSHClient:
                     client_keys=[str(self.settings.ssh_private_key_path)],
                     # A non-None empty source enables AsyncSSH's validation callback.
                     known_hosts=b"",
-                    client_factory=lambda: client,
+                    client_factory=lambda client=client: client,
                     connect_timeout=self.settings.ssh_connect_timeout,
                     login_timeout=self.settings.ssh_connect_timeout,
                 ) as connection:
@@ -78,10 +78,12 @@ class SSHClient:
                         raise SSHConnectionError(detail[:1000])
                     return result.stdout
             except asyncssh.PermissionDenied as exc:
-                raise SSHAuthenticationError(f"SSH authentication failed for {node.node_name}") from exc
+                raise SSHAuthenticationError(
+                    f"SSH authentication failed for {node.node_name}"
+                ) from exc
             except asyncssh.HostKeyNotVerifiable as exc:
                 raise SSHHostKeyError(f"SSH host key rejected for {node.node_name}") from exc
-            except (asyncssh.Error, OSError, asyncio.TimeoutError, SSHConnectionError) as exc:
+            except (asyncssh.Error, OSError, SSHConnectionError) as exc:
                 last_error = exc
                 if attempt < self.settings.ssh_retries:
                     await asyncio.sleep(attempt)

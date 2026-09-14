@@ -2,7 +2,12 @@ import asyncio
 from datetime import UTC, datetime
 from time import monotonic
 
-from app.errors import NotesParseError, PanelAPIError, SSHConnectionError
+from app.errors import (
+    NotesParseError,
+    PanelAPIError,
+    PrometheusTargetsWriteError,
+    SSHConnectionError,
+)
 from app.logging import log
 from app.metrics import (
     ACTIVE_NODES,
@@ -137,13 +142,31 @@ class NodeSyncService:
                         error=str(exc),
                     )
 
-            removed = await self.repository.mark_missing_removed(set(desired) | protected_ids)
+            retained_ids = set(desired) | protected_ids
+            managed_before_removal = await self.repository.get_nodes()
+            retained = [node for node in managed_before_removal if node.node_id in retained_ids]
+            groups = build_target_groups(retained)
+            try:
+                write_targets_atomically(self.targets_file, groups)
+            except PrometheusTargetsWriteError as exc:
+                SYNC_FAILURES.inc()
+                result = SyncResult(
+                    last_started_at=started,
+                    last_finished_at=datetime.now(UTC),
+                    status="failed",
+                    nodes_total=len(panel_nodes),
+                    detail=str(exc),
+                )
+                self.last_result = result
+                SYNC_DURATION.observe(monotonic() - timer)
+                log.error("prometheus_targets_write_failed", error=str(exc))
+                return result
+
+            removed = await self.repository.mark_missing_removed(retained_ids)
             for node in removed:
                 log.info("node_removed", node=node.node_name, node_id=node.node_id)
 
             managed = await self.repository.get_nodes()
-            groups = build_target_groups(managed)
-            write_targets_atomically(self.targets_file, groups)
             active = sum(node.status == "active" for node in managed)
             error_count = sum(node.status == "error" for node in managed)
             MANAGED_NODES.set(len(managed))

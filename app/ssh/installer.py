@@ -4,7 +4,6 @@ from app.logging import log
 from app.models import DesiredNode
 from app.ssh.client import SSHClient
 
-
 CHECK_COMMAND = """set -eu
 if command -v node_exporter >/dev/null 2>&1 \
   && systemctl is-active --quiet node_exporter \
@@ -52,11 +51,12 @@ class NodeExporterInstaller:
                 raise NodeExporterInstallError(
                     "PROMETHEUS_SOURCE_IP is required when CONFIGURE_FIREWALL=true"
                 )
+            rule = f"rule family=ipv4 source address={source} port port={port} protocol=tcp accept"
             firewall = f"""
 if command -v ufw >/dev/null 2>&1; then
   ufw allow from {source} to any port {port} proto tcp
 elif command -v firewall-cmd >/dev/null 2>&1; then
-  firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address={source} port port={port} protocol=tcp accept'
+  firewall-cmd --permanent --add-rich-rule='{rule}'
   firewall-cmd --reload
 fi
 """
@@ -105,4 +105,3 @@ systemctl is-active --quiet node_exporter
 curl -fsS --max-time 10 http://127.0.0.1:{port}/metrics >/dev/null
 {firewall}
 """
-
