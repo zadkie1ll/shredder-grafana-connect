@@ -29,6 +29,9 @@ def build_service(settings: Settings) -> tuple[NodeRepository, NodeSyncService]:
         settings.prometheus_targets_file,
         protected_node_ids=settings.protected_ids,
         protected_node_names=settings.protected_names,
+        manage_nodes_without_notes=settings.manage_nodes_without_notes,
+        default_ssh_user=settings.default_ssh_user,
+        default_exporter_port=settings.node_exporter_port,
     )
     return repository, service
 

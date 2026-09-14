@@ -86,3 +86,21 @@ async def test_protected_node_survives_panel_removal(settings) -> None:
     node = await repository.get_node("id1")
     assert node is not None and node.status == "active"
     assert "1.2.3.4:9100" in settings.prometheus_targets_file.read_text()
+
+
+async def test_optional_fallback_manages_node_without_notes(settings) -> None:
+    repository = NodeRepository(settings.database_path)
+    await repository.initialize()
+    installer = FakeInstaller()
+    node = panel_node()
+    node.notes = None
+    service = NodeSyncService(
+        FakePanel([node]),
+        repository,
+        installer,
+        settings.prometheus_targets_file,
+        manage_nodes_without_notes=True,
+    )
+    result = await service.sync()
+    assert result.nodes_active == 1
+    assert installer.calls[0].ssh_user == "root"

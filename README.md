@@ -32,6 +32,18 @@ enabled=true
 Обязателен `ssh_user`. Если `ssh_host` отсутствует, используется address/IP из
 Panel API. Допустимы только перечисленные поля. `enabled=false` исключает ноду.
 
+Если все ноды используют одинакового пользователя и в панели нет notes, fallback
+можно включить явно:
+
+```env
+MANAGE_NODES_WITHOUT_NOTES=true
+DEFAULT_SSH_USER=root
+```
+
+Тогда адрес берётся из Panel API, SSH port — `22`, exporter port — из
+`NODE_EXPORTER_PORT`. По умолчанию fallback выключен, чтобы случайно не
+подключаться к нодам без явной конфигурации.
+
 ## Конфигурация
 
 ```bash

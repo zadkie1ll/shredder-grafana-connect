@@ -19,7 +19,7 @@ from app.metrics import (
     SYNC_FAILURES,
     SYNC_RUNS,
 )
-from app.models import DesiredNode, PanelNode, SyncResult
+from app.models import DesiredNode, MonitoringConfig, PanelNode, SyncResult
 from app.panel.client import PanelClient
 from app.panel.parser import parse_monitoring_notes
 from app.prometheus_sd import build_target_groups, write_targets_atomically
@@ -36,6 +36,9 @@ class NodeSyncService:
         targets_file: object,
         protected_node_ids: set[str] | None = None,
         protected_node_names: set[str] | None = None,
+        manage_nodes_without_notes: bool = False,
+        default_ssh_user: str = "root",
+        default_exporter_port: int = 9100,
     ):
         self.panel = panel
         self.repository = repository
@@ -43,6 +46,9 @@ class NodeSyncService:
         self.targets_file = targets_file
         self.protected_node_ids = protected_node_ids or set()
         self.protected_node_names = {name.casefold() for name in (protected_node_names or set())}
+        self.manage_nodes_without_notes = manage_nodes_without_notes
+        self.default_ssh_user = default_ssh_user
+        self.default_exporter_port = default_exporter_port
         self._lock = asyncio.Lock()
         self.last_result: SyncResult | None = None
 
@@ -204,9 +210,14 @@ class NodeSyncService:
             node_id in self.protected_node_ids or node_name.casefold() in self.protected_node_names
         )
 
-    @staticmethod
-    def _to_desired(node: PanelNode) -> DesiredNode | None:
+    def _to_desired(self, node: PanelNode) -> DesiredNode | None:
         monitoring = parse_monitoring_notes(node.notes, node.address)
+        if monitoring is None and self.manage_nodes_without_notes:
+            monitoring = MonitoringConfig(
+                ssh_host=node.address,
+                ssh_user=self.default_ssh_user,
+                node_exporter_port=self.default_exporter_port,
+            )
         if monitoring is None or not monitoring.enabled:
             return None
         return DesiredNode(

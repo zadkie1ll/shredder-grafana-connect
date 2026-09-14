@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     panel_verify_tls: bool = True
     panel_request_timeout: float = Field(20, gt=0)
     panel_allow_empty_response: bool = False
+    manage_nodes_without_notes: bool = False
+    default_ssh_user: str = "root"
 
     admin_api_token: str = Field(min_length=16)
     sync_interval_seconds: int = Field(3600, ge=60)

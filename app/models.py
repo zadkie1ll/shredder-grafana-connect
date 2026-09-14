@@ -101,4 +101,10 @@ def panel_node_from_payload(item: dict[str, Any]) -> PanelNode:
             if normalized.get(key):
                 normalized["address"] = normalized[key]
                 break
+    if "notes" not in normalized and "note" in normalized:
+        normalized["notes"] = normalized["note"]
+    if "country" not in normalized and "countryCode" in normalized:
+        normalized["country"] = normalized["countryCode"]
+    if "status" not in normalized and "isConnected" in normalized:
+        normalized["status"] = "connected" if normalized["isConnected"] else "disconnected"
     return PanelNode.model_validate(normalized)

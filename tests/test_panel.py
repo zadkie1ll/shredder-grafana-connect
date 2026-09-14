@@ -12,6 +12,22 @@ def test_panel_model_normalizes_id_and_ip() -> None:
     assert node.address == "10.0.0.1"
 
 
+def test_remnawave_fields_are_normalized() -> None:
+    node = panel_node_from_payload(
+        {
+            "uuid": "id1",
+            "name": "ru1",
+            "address": "10.0.0.1",
+            "note": "monitoring:\nssh_user=root",
+            "countryCode": "RU",
+            "isConnected": True,
+        }
+    )
+    assert node.notes == "monitoring:\nssh_user=root"
+    assert node.country == "RU"
+    assert node.status == "connected"
+
+
 @pytest.mark.asyncio
 async def test_panel_client_parses_nested_nodes(settings) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
