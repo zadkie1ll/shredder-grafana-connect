@@ -27,6 +27,8 @@ def build_service(settings: Settings) -> tuple[NodeRepository, NodeSyncService]:
         repository,
         NodeExporterInstaller(settings, ssh),
         settings.prometheus_targets_file,
+        protected_node_ids=settings.protected_ids,
+        protected_node_names=settings.protected_names,
     )
     return repository, service
 

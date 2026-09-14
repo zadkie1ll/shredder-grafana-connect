@@ -34,11 +34,15 @@ class NodeSyncService:
         repository: NodeRepository,
         installer: NodeExporterInstaller,
         targets_file: object,
+        protected_node_ids: set[str] | None = None,
+        protected_node_names: set[str] | None = None,
     ):
         self.panel = panel
         self.repository = repository
         self.installer = installer
         self.targets_file = targets_file
+        self.protected_node_ids = protected_node_ids or set()
+        self.protected_node_names = {name.casefold() for name in (protected_node_names or set())}
         self._lock = asyncio.Lock()
         self.last_result: SyncResult | None = None
 
@@ -144,6 +148,15 @@ class NodeSyncService:
 
             retained_ids = set(desired) | protected_ids
             managed_before_removal = await self.repository.get_nodes()
+            for node in managed_before_removal:
+                if self._is_protected(node.node_id, node.node_name):
+                    retained_ids.add(node.node_id)
+                    if node.node_id not in desired:
+                        log.warning(
+                            "node_protected_from_removal",
+                            node=node.node_name,
+                            node_id=node.node_id,
+                        )
             retained = [node for node in managed_before_removal if node.node_id in retained_ids]
             groups = build_target_groups(retained)
             try:
@@ -185,6 +198,11 @@ class NodeSyncService:
             SYNC_DURATION.observe(monotonic() - timer)
             log.info("sync_finished", **result.model_dump(mode="json"))
             return result
+
+    def _is_protected(self, node_id: str, node_name: str) -> bool:
+        return (
+            node_id in self.protected_node_ids or node_name.casefold() in self.protected_node_names
+        )
 
     @staticmethod
     def _to_desired(node: PanelNode) -> DesiredNode | None:

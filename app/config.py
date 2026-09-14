@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     admin_api_token: str = Field(min_length=16)
     sync_interval_seconds: int = Field(3600, ge=60)
     run_sync_on_startup: bool = True
+    protected_node_ids: str = ""
+    protected_node_names: str = "bot,panel"
 
     ssh_private_key_path: Path = Path("/run/secrets/id_ed25519")
     ssh_known_hosts_path: Path = Path("/app/data/known_hosts")
@@ -35,6 +37,18 @@ class Settings(BaseSettings):
     prometheus_targets_file: Path = Path("/prometheus-targets/nodes.json")
     database_path: Path = Path("/app/data/state.db")
     log_level: str = "INFO"
+
+    @property
+    def protected_ids(self) -> set[str]:
+        return {value.strip() for value in self.protected_node_ids.split(",") if value.strip()}
+
+    @property
+    def protected_names(self) -> set[str]:
+        return {
+            value.strip().casefold()
+            for value in self.protected_node_names.split(",")
+            if value.strip()
+        }
 
     @field_validator("panel_nodes_path")
     @classmethod

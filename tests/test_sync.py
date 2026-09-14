@@ -66,3 +66,23 @@ async def test_removed_node_is_removed_from_targets(settings) -> None:
     node = await repository.get_node("id1")
     assert node is not None and node.status == "removed"
     assert settings.prometheus_targets_file.read_text().strip() == "[]"
+
+
+async def test_protected_node_survives_panel_removal(settings) -> None:
+    repository = NodeRepository(settings.database_path)
+    await repository.initialize()
+    installer = FakeInstaller()
+    panel = FakePanel([panel_node()])
+    service = NodeSyncService(
+        panel,
+        repository,
+        installer,
+        settings.prometheus_targets_file,
+        protected_node_names={"ru1"},
+    )
+    await service.sync()
+    panel.nodes = []
+    await service.sync()
+    node = await repository.get_node("id1")
+    assert node is not None and node.status == "active"
+    assert "1.2.3.4:9100" in settings.prometheus_targets_file.read_text()
