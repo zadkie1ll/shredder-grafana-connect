@@ -1,0 +1,1 @@
+"""Shredder Grafana Connect service."""

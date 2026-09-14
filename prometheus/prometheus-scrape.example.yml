@@ -1,0 +1,7 @@
+scrape_configs:
+  - job_name: nodes
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/nodes.json
+        refresh_interval: 30s
+
