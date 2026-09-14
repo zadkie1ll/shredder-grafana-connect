@@ -5,9 +5,8 @@ from app.models import DesiredNode
 from app.ssh.client import SSHClient
 
 CHECK_COMMAND = """set -eu
-if command -v node_exporter >/dev/null 2>&1 \
-  && systemctl is-active --quiet node_exporter \
-  && curl -fsS --max-time 5 http://127.0.0.1:${EXPORTER_PORT}/metrics >/dev/null; then
+if curl -fsS --max-time 5 http://127.0.0.1:${EXPORTER_PORT}/metrics \
+  | grep -q '^node_exporter_build_info'; then
   printf ready
 else
   printf missing
